@@ -1,0 +1,29 @@
+#!/bin/sh
+# Pre-push Git Hook to run composer lint and tests
+# This hook will run composer lint and tests before allowing a push
+# Exit non-zero to abort the push
+
+# Ensure we run in project root
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+echo "Running composer lint..."
+composer run lint --no-interaction
+RESULT_LINT=$?
+
+if [ $RESULT_LINT -ne 0 ]; then
+  echo "composer lint failed. Aborting push."
+  exit $RESULT_LINT
+fi
+
+# Optionally run tests too
+echo "Running composer test..."
+composer run test --no-interaction
+RESULT_TEST=$?
+
+if [ $RESULT_TEST -ne 0 ]; then
+  echo "composer test failed. Aborting push."
+  exit $RESULT_TEST
+fi
+
+echo "All checks passed. Proceeding with push."
+exit 0

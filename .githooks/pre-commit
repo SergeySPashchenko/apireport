@@ -1,0 +1,39 @@
+#!/bin/sh
+# Pre-commit hook: quick checks run before commit
+# Runs Pint formatting checks and Rector dry-run. For speed, avoid heavy checks.
+
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+# Run formatting checks
+echo "Running Pint check..."
+./vendor/bin/pint --test --parallel
+RESULT_PINT=$?
+
+if [ $RESULT_PINT -ne 0 ]; then
+  echo "Pint reported issues. Please run 'vendor/bin/pint' to fix them before committing."
+  exit $RESULT_PINT
+fi
+
+# Run Rector dry run to catch potential code changes
+echo "Running Rector dry-run..."
+./vendor/bin/rector --dry-run
+RESULT_RECTOR=$?
+
+if [ $RESULT_RECTOR -ne 0 ]; then
+  echo "Rector dry-run reported issues. Please run 'vendor/bin/rector' to fix them before committing."
+  exit $RESULT_RECTOR
+fi
+
+# Run a quick subset of tests only if files in tests changed
+if git diff --cached --name-only | grep -q "tests/"; then
+  echo "Running Pest for changed tests..."
+  ./vendor/bin/pest --stop-on-failure
+  RESULT_PHPUNIT=$?
+  if [ $RESULT_PHPUNIT -ne 0 ]; then
+    echo "PHPUnit tests failed. Please fix before committing."
+    exit $RESULT_PHPUNIT
+  fi
+fi
+
+echo "Pre-commit checks passed."
+exit 0
